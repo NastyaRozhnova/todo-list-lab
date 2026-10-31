@@ -1,3 +1,9 @@
+const stylesheet = document.createElement('link');
+stylesheet.rel = 'stylesheet';
+stylesheet.href = new URL('../assets/styles.css', import.meta.url).href;
+
+document.head.append(stylesheet);
+
 const main = document.createElement('main');
 main.className = 'app';
 
@@ -56,7 +62,7 @@ taskList.className = 'task-list';
 
 main.append(message, taskList);
 
-const tasks = [];
+let tasks = [];
 
 function renderTasks() {
   taskList.replaceChildren();
@@ -64,6 +70,15 @@ function renderTasks() {
   for (const task of tasks) {
     const item = document.createElement('li');
     item.className = 'task';
+    item.classList.toggle('task--completed', task.completed);
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.checked = task.completed;
+    checkbox.setAttribute(
+      'aria-label',
+      `Задача выполнена: ${task.title}`
+    );
 
     const title = document.createElement('span');
     title.className = 'task-title';
@@ -79,7 +94,34 @@ function renderTasks() {
       date.textContent = 'Без срока';
     }
 
-    item.append(title, date);
+    checkbox.addEventListener('change', () => {
+      task.completed = checkbox.checked;
+
+      item.classList.toggle('task--completed', task.completed);
+
+      message.textContent = task.completed
+        ? 'Задача выполнена.'
+        : 'Задача возвращена в работу.';
+    });
+
+    const deleteButton = document.createElement('button');
+    deleteButton.type = 'button';
+    deleteButton.className = 'delete-button';
+    deleteButton.textContent = 'Удалить';
+    deleteButton.setAttribute(
+      'aria-label',
+      `Удалить задачу: ${task.title}`
+    );
+
+    deleteButton.addEventListener('click', () => {
+      tasks = tasks.filter((item) => item.id !== task.id);
+
+      renderTasks();
+      message.textContent = 'Задача удалена.';
+      titleInput.focus();
+    });
+
+    item.append(checkbox, title, date, deleteButton);
     taskList.append(item);
   }
 }
