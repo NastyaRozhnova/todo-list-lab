@@ -1,3 +1,6 @@
+import { loadTasks, saveTasks } from './storage.js';
+
+// Подключение стилей
 const stylesheet = document.createElement('link');
 stylesheet.rel = 'stylesheet';
 stylesheet.href = new URL('../assets/styles.css', import.meta.url).href;
@@ -13,6 +16,7 @@ heading.textContent = 'Мой список задач';
 main.append(heading);
 document.body.append(main);
 
+// Форма добавления задачи
 const form = document.createElement('form');
 form.className = 'task-form';
 
@@ -53,6 +57,7 @@ form.append(
 
 main.append(form);
 
+// Сообщения и список задач
 const message = document.createElement('p');
 message.className = 'message';
 message.setAttribute('role', 'status');
@@ -62,8 +67,24 @@ taskList.className = 'task-list';
 
 main.append(message, taskList);
 
-let tasks = [];
+// Загрузка сохранённых задач
+const savedState = loadTasks();
+let tasks = savedState.tasks;
 
+if (savedState.error) {
+  message.textContent = savedState.error;
+}
+
+// Сохранение изменений
+function saveChanges(successMessage) {
+  const saved = saveTasks(tasks);
+
+  message.textContent = saved
+    ? successMessage
+    : 'Не удалось сохранить изменения. После перезагрузки они могут потеряться.';
+}
+
+// Отображение задач
 function renderTasks() {
   taskList.replaceChildren();
 
@@ -94,16 +115,20 @@ function renderTasks() {
       date.textContent = 'Без срока';
     }
 
+    // Отметка выполнения
     checkbox.addEventListener('change', () => {
       task.completed = checkbox.checked;
 
       item.classList.toggle('task--completed', task.completed);
 
-      message.textContent = task.completed
-        ? 'Задача выполнена.'
-        : 'Задача возвращена в работу.';
+      saveChanges(
+        task.completed
+          ? 'Задача выполнена.'
+          : 'Задача возвращена в работу.'
+      );
     });
 
+    // Удаление задачи
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
     deleteButton.className = 'delete-button';
@@ -117,7 +142,7 @@ function renderTasks() {
       tasks = tasks.filter((item) => item.id !== task.id);
 
       renderTasks();
-      message.textContent = 'Задача удалена.';
+      saveChanges('Задача удалена.');
       titleInput.focus();
     });
 
@@ -126,6 +151,7 @@ function renderTasks() {
   }
 }
 
+// Добавление новой задачи
 form.addEventListener('submit', (event) => {
   event.preventDefault();
 
@@ -149,5 +175,7 @@ form.addEventListener('submit', (event) => {
 
   form.reset();
   titleInput.focus();
-  message.textContent = 'Задача добавлена.';
+  saveChanges('Задача добавлена.');
 });
+
+renderTasks();
