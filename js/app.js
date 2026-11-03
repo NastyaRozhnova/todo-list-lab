@@ -113,6 +113,51 @@ filters.append(
   statusSelect
 );
 
+// Поиск по дате
+const dateFilterLabel = document.createElement('label');
+dateFilterLabel.textContent = 'Задачи на дату';
+dateFilterLabel.htmlFor = 'task-date-filter';
+
+const dateFilterInput = document.createElement('input');
+dateFilterInput.type = 'date';
+dateFilterInput.id = 'task-date-filter';
+dateFilterInput.min = '0001-01-01';
+dateFilterInput.max = '9999-12-31';
+
+// Сортировка
+const sortLabel = document.createElement('label');
+sortLabel.textContent = 'Порядок задач';
+sortLabel.htmlFor = 'task-sort';
+
+const sortSelect = document.createElement('select');
+sortSelect.id = 'task-sort';
+
+const sortOptions = [
+  { value: 'manual', text: 'Ручной порядок' },
+  { value: 'asc', text: 'Сначала ближайшие сроки' },
+  { value: 'desc', text: 'Сначала поздние сроки' }
+];
+
+for (const sort of sortOptions) {
+  const option = document.createElement('option');
+  option.value = sort.value;
+  option.textContent = sort.text;
+  sortSelect.append(option);
+}
+
+// Сброс поиска, фильтров и сортировки
+const resetFiltersButton = document.createElement('button');
+resetFiltersButton.type = 'button';
+resetFiltersButton.textContent = 'Сбросить фильтры и сортировку';
+
+filters.append(
+  dateFilterLabel,
+  dateFilterInput,
+  sortLabel,
+  sortSelect,
+  resetFiltersButton
+);
+
 main.append(filters);
 
 const emptyMessage = document.createElement('p');
@@ -156,8 +201,10 @@ function saveChanges(successMessage) {
 function getVisibleTasks() {
   const query = searchInput.value.trim().toLowerCase();
   const status = statusSelect.value;
+  const selectedDate = dateFilterInput.value;
+  const sort = sortSelect.value;
 
-  return tasks.filter((task) => {
+  const visibleTasks = tasks.filter((task) => {
     const matchesTitle = task.title.toLowerCase().includes(query);
 
     const matchesStatus =
@@ -165,8 +212,26 @@ function getVisibleTasks() {
       (status === 'active' && !task.completed) ||
       (status === 'completed' && task.completed);
 
-    return matchesTitle && matchesStatus;
+    const matchesDate =
+      selectedDate === '' || task.date === selectedDate;
+
+    return matchesTitle && matchesStatus && matchesDate;
   });
+
+  if (sort !== 'manual') {
+    visibleTasks.sort((a, b) => {
+      // Задачи без срока всегда располагаются в конце
+      if (!a.date && !b.date) return 0;
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+
+      const comparison = a.date.localeCompare(b.date);
+
+      return sort === 'asc' ? comparison : -comparison;
+    });
+  }
+
+  return visibleTasks;
 }
 
 searchInput.addEventListener('input', () => {
@@ -175,6 +240,24 @@ searchInput.addEventListener('input', () => {
 
 statusSelect.addEventListener('change', () => {
   renderTasks();
+});
+
+dateFilterInput.addEventListener('change', () => {
+  renderTasks();
+});
+
+sortSelect.addEventListener('change', () => {
+  renderTasks();
+});
+
+resetFiltersButton.addEventListener('click', () => {
+  searchInput.value = '';
+  statusSelect.value = 'all';
+  dateFilterInput.value = '';
+  sortSelect.value = 'manual';
+
+  renderTasks();
+  searchInput.focus();
 });
 
 // Отображение задач
@@ -186,7 +269,7 @@ function renderTasks() {
   emptyMessage.hidden = visibleTasks.length > 0;
   emptyMessage.textContent = tasks.length === 0
     ? 'Пока нет задач. Добавьте первую!'
-    : 'Ничего не найдено. Измените поиск или статус.';
+    : 'Ничего не найдено. Измените поиск, статус или дату.';
 
   for (const task of visibleTasks) {
     const item = document.createElement('li');
