@@ -72,7 +72,54 @@ message.setAttribute('role', 'status');
 const taskList = document.createElement('ul');
 taskList.className = 'task-list';
 
-main.append(message, taskList);
+// Поиск и фильтр статуса
+const filters = document.createElement('section');
+filters.className = 'filters';
+filters.setAttribute('aria-label', 'Поиск и фильтрация задач');
+
+const searchLabel = document.createElement('label');
+searchLabel.textContent = 'Поиск по названию';
+searchLabel.htmlFor = 'task-search';
+
+const searchInput = document.createElement('input');
+searchInput.type = 'search';
+searchInput.id = 'task-search';
+searchInput.placeholder = 'Введите название задачи';
+
+const statusLabel = document.createElement('label');
+statusLabel.textContent = 'Статус';
+statusLabel.htmlFor = 'task-status';
+
+const statusSelect = document.createElement('select');
+statusSelect.id = 'task-status';
+
+const statusOptions = [
+  { value: 'all', text: 'Все задачи' },
+  { value: 'active', text: 'Невыполненные' },
+  { value: 'completed', text: 'Выполненные' }
+];
+
+for (const status of statusOptions) {
+  const option = document.createElement('option');
+  option.value = status.value;
+  option.textContent = status.text;
+  statusSelect.append(option);
+}
+
+filters.append(
+  searchLabel,
+  searchInput,
+  statusLabel,
+  statusSelect
+);
+
+main.append(filters);
+
+const emptyMessage = document.createElement('p');
+emptyMessage.className = 'empty-message';
+emptyMessage.hidden = true;
+
+main.append(message, taskList, emptyMessage);
 
 // Загрузка сохранённых задач
 const savedState = loadTasks();
@@ -106,11 +153,42 @@ function saveChanges(successMessage) {
     : 'Не удалось сохранить изменения. После перезагрузки они могут потеряться.';
 }
 
+function getVisibleTasks() {
+  const query = searchInput.value.trim().toLowerCase();
+  const status = statusSelect.value;
+
+  return tasks.filter((task) => {
+    const matchesTitle = task.title.toLowerCase().includes(query);
+
+    const matchesStatus =
+      status === 'all' ||
+      (status === 'active' && !task.completed) ||
+      (status === 'completed' && task.completed);
+
+    return matchesTitle && matchesStatus;
+  });
+}
+
+searchInput.addEventListener('input', () => {
+  renderTasks();
+});
+
+statusSelect.addEventListener('change', () => {
+  renderTasks();
+});
+
 // Отображение задач
 function renderTasks() {
   taskList.replaceChildren();
 
-  for (const task of tasks) {
+  const visibleTasks = getVisibleTasks();
+
+  emptyMessage.hidden = visibleTasks.length > 0;
+  emptyMessage.textContent = tasks.length === 0
+    ? 'Пока нет задач. Добавьте первую!'
+    : 'Ничего не найдено. Измените поиск или статус.';
+
+  for (const task of visibleTasks) {
     const item = document.createElement('li');
     item.className = 'task';
     item.classList.toggle('task--completed', task.completed);
@@ -141,13 +219,14 @@ function renderTasks() {
     checkbox.addEventListener('change', () => {
       task.completed = checkbox.checked;
 
-      item.classList.toggle('task--completed', task.completed);
-
       saveChanges(
         task.completed
           ? 'Задача выполнена.'
           : 'Задача возвращена в работу.'
       );
+
+      renderTasks();
+      statusSelect.focus();
     });
 
     // Редактирование задачи

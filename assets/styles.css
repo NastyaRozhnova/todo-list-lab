@@ -180,3 +180,35 @@ button:hover {
     flex: 1;
   }
 }
+
+.filters {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.filters label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.filters input,
+.filters select {
+  width: 100%;
+  min-width: 0;
+  min-height: 46px;
+  padding: 12px 14px;
+  font: inherit;
+  color: var(--text);
+  background-color: #fffdf8;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.empty-message {
+  padding: 20px 0;
+  color: var(--muted);
+  text-align: center;
+}
