@@ -57,6 +57,13 @@ form.append(
 
 main.append(form);
 
+const cancelButton = document.createElement('button');
+cancelButton.type = 'button';
+cancelButton.textContent = 'Отмена';
+cancelButton.hidden = true;
+
+form.append(cancelButton);
+
 // Сообщения и список задач
 const message = document.createElement('p');
 message.className = 'message';
@@ -70,6 +77,21 @@ main.append(message, taskList);
 // Загрузка сохранённых задач
 const savedState = loadTasks();
 let tasks = savedState.tasks;
+
+let editingTaskId = null;
+
+function resetForm() {
+  editingTaskId = null;
+  form.reset();
+  addButton.textContent = 'Добавить задачу';
+  cancelButton.hidden = true;
+}
+
+cancelButton.addEventListener('click', () => {
+  resetForm();
+  message.textContent = 'Редактирование отменено';
+  titleInput.focus();
+});
 
 if (savedState.error) {
   message.textContent = savedState.error;
@@ -128,6 +150,28 @@ function renderTasks() {
       );
     });
 
+    // Редактирование задачи
+    const editButton = document.createElement('button');
+    editButton.type = 'button';
+    editButton.textContent = 'Изменить';
+    editButton.setAttribute(
+      'aria-label',
+      `Изменить задачу: ${task.title}`
+    );
+
+    editButton.addEventListener('click', () => {
+      editingTaskId = task.id;
+
+      titleInput.value = task.title;
+      dateInput.value = task.date;
+
+      addButton.textContent = 'Сохранить изменения';
+      cancelButton.hidden = false;
+
+      message.textContent = 'Измените название или дату задачи';
+      titleInput.focus();
+    });
+
     // Удаление задачи
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
@@ -141,12 +185,16 @@ function renderTasks() {
     deleteButton.addEventListener('click', () => {
       tasks = tasks.filter((item) => item.id !== task.id);
 
+      if (editingTaskId === task.id) {
+        resetForm();
+      }
+
       renderTasks();
       saveChanges('Задача удалена.');
       titleInput.focus();
     });
 
-    item.append(checkbox, title, date, deleteButton);
+    item.append(checkbox, title, date, editButton, deleteButton);
     taskList.append(item);
   }
 }
@@ -163,19 +211,38 @@ form.addEventListener('submit', (event) => {
     return;
   }
 
-  const task = {
-    id: crypto.randomUUID(),
-    title,
-    date: dateInput.value,
-    completed: false
-  };
+  let successMessage;
 
-  tasks.push(task);
+  if (editingTaskId !== null) {
+    const task = tasks.find((item) => item.id === editingTaskId);
+
+    if (!task) {
+      resetForm();
+      message.textContent = 'Задача не найдена.';
+      titleInput.focus();
+      return;
+    }
+
+    task.title = title;
+    task.date = dateInput.value;
+
+    successMessage = 'Изменения сохранены.';
+  } else {
+    const task = {
+      id: crypto.randomUUID(),
+      title,
+      date: dateInput.value,
+      completed: false
+    };
+
+    tasks.push(task);
+    successMessage = 'Задача добавлена.';
+  }
+
   renderTasks();
-
-  form.reset();
+  saveChanges(successMessage);
+  resetForm();
   titleInput.focus();
-  saveChanges('Задача добавлена.');
 });
 
 renderTasks();
