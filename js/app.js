@@ -366,12 +366,161 @@ function addDragEvents(item, task) {
   });
 }
 
+function addTouchDragEvents(item, task) {
+  item.dataset.taskId = task.id;
+
+  let holdTimer = null;
+  let touchId = null;
+  let startX = 0;
+  let startY = 0;
+  let dragging = false;
+  let target = null;
+
+  function clearHighlight() {
+    for (const row of taskList.children) {
+      row.classList.remove(
+        'task--drop-before',
+        'task--drop-after'
+      );
+    }
+  }
+
+  function cancelGesture() {
+    clearTimeout(holdTimer);
+    holdTimer = null;
+    touchId = null;
+    dragging = false;
+    target = null;
+
+    item.classList.remove('task--dragging');
+    item.draggable = canReorderTasks();
+    clearHighlight();
+  }
+
+  item.addEventListener('touchstart', (event) => {
+    cancelGesture();
+
+    if (
+      !canReorderTasks() ||
+      event.touches.length !== 1 ||
+      event.target.closest('button, input, select, a')
+    ) {
+      return;
+    }
+
+    const touch = event.touches[0];
+    touchId = touch.identifier;
+    startX = touch.clientX;
+    startY = touch.clientY;
+
+    // На время касания отключаем нативное перетаскивание
+    item.draggable = false;
+
+    holdTimer = setTimeout(() => {
+      if (!item.isConnected || !canReorderTasks()) {
+        cancelGesture();
+        return;
+      }
+
+      dragging = true;
+      item.classList.add('task--dragging');
+    }, 450);
+  }, { passive: true });
+
+  item.addEventListener('touchmove', (event) => {
+    if (touchId === null) return;
+
+    if (event.touches.length !== 1 || !canReorderTasks()) {
+      cancelGesture();
+      return;
+    }
+
+    const touch = Array.from(event.touches).find(
+      (point) => point.identifier === touchId
+    );
+
+    if (!touch) return;
+
+    if (!dragging) {
+      const distance = Math.hypot(
+        touch.clientX - startX,
+        touch.clientY - startY
+      );
+
+      // Если палец сразу движется - это обычная прокрутка
+      if (distance > 8) cancelGesture();
+      return;
+    }
+
+    // Если браузер уже начал свой жест, отменяем перенос
+    if (!event.cancelable) {
+      cancelGesture();
+      return;
+    }
+
+    event.preventDefault();
+    clearHighlight();
+    target = null;
+
+    const element = document.elementFromPoint(
+      touch.clientX,
+      touch.clientY
+    );
+
+    const row = element?.closest('.task');
+
+    if (!row || row === item || row.parentElement !== taskList) {
+      return;
+    }
+
+    const bounds = row.getBoundingClientRect();
+    const after = touch.clientY > bounds.top + bounds.height / 2;
+
+    target = {
+      id: row.dataset.taskId,
+      after
+    };
+
+    row.classList.add(
+      after ? 'task--drop-after' : 'task--drop-before'
+    );
+  }, { passive: false });
+
+  item.addEventListener('touchend', (event) => {
+    const ended = Array.from(event.changedTouches).some(
+      (touch) => touch.identifier === touchId
+    );
+
+    if (!ended) return;
+
+    const destination = dragging ? target : null;
+
+    if (dragging && event.cancelable) {
+      event.preventDefault();
+    }
+
+    cancelGesture();
+
+    if (destination && canReorderTasks()) {
+      moveTask(task.id, destination.id, destination.after);
+    }
+  }, { passive: false });
+
+  item.addEventListener('touchcancel', cancelGesture);
+
+  item.addEventListener('contextmenu', (event) => {
+    if (touchId !== null) {
+      event.preventDefault();
+    }
+  });
+}
+
 // Отображение задач
 function renderTasks() {
   taskList.replaceChildren();
 
   reorderHint.textContent = canReorderTasks()
-  ? 'Перетащите задачу выше или ниже, чтобы изменить порядок.'
+  ? 'Перетащите задачу мышью. На телефоне: удерживайте карточку, затем тяните.'
   : 'Для перемещения выберите ручной порядок и сбросьте поиск и фильтры.';
 
   const visibleTasks = getVisibleTasks();
@@ -386,6 +535,7 @@ function renderTasks() {
     item.className = 'task';
     item.classList.toggle('task--completed', task.completed);
     addDragEvents(item, task);
+    addTouchDragEvents(item, task);
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';

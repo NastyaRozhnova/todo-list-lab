@@ -236,3 +236,11 @@ button:hover {
 .task--drop-after {
   box-shadow: 0 3px 0 var(--gold);
 }
+
+@media (any-pointer: coarse) {
+  .task {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+}
