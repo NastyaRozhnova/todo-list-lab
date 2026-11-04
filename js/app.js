@@ -413,9 +413,17 @@ function renderTasks() {
     checkbox.addEventListener('change', () => {
       task.completed = checkbox.checked;
 
+      if (task.completed) {
+        // Убираем задачу с текущего места
+        tasks = tasks.filter((item) => item.id !== task.id);
+
+        // Добавляем эту же задачу в конец
+        tasks.push(task);
+      }
+
       saveChanges(
         task.completed
-          ? 'Задача выполнена.'
+          ? 'Задача выполнена и перемещена в конец.'
           : 'Задача возвращена в работу.'
       );
 
