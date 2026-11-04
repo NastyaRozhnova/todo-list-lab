@@ -212,3 +212,27 @@ button:hover {
   color: var(--muted);
   text-align: center;
 }
+
+.reorder-hint {
+  margin: 0 0 16px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.task[draggable="true"] {
+  cursor: grab;
+}
+
+.task--dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.task--drop-before {
+  box-shadow: 0 -3px 0 var(--gold);
+}
+
+.task--drop-after {
+  box-shadow: 0 3px 0 var(--gold);
+}

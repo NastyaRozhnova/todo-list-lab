@@ -164,13 +164,17 @@ const emptyMessage = document.createElement('p');
 emptyMessage.className = 'empty-message';
 emptyMessage.hidden = true;
 
-main.append(message, taskList, emptyMessage);
+const reorderHint = document.createElement('p');
+reorderHint.className = 'reorder-hint';
+
+main.append(message, reorderHint, taskList, emptyMessage);
 
 // Загрузка сохранённых задач
 const savedState = loadTasks();
 let tasks = savedState.tasks;
 
 let editingTaskId = null;
+let draggedTaskId = null;
 
 function resetForm() {
   editingTaskId = null;
@@ -260,9 +264,115 @@ resetFiltersButton.addEventListener('click', () => {
   searchInput.focus();
 });
 
+// Перемещение задач
+function canReorderTasks() {
+  return (
+    sortSelect.value === 'manual' &&
+    statusSelect.value === 'all' &&
+    searchInput.value.trim() === '' &&
+    dateFilterInput.value === ''
+  );
+}
+
+function moveTask(sourceId, targetId, insertAfter) {
+  if (sourceId === targetId) return;
+
+  const sourceIndex = tasks.findIndex((task) => task.id === sourceId);
+  const targetExists = tasks.some((task) => task.id === targetId);
+
+  if (sourceIndex === -1 || !targetExists) return;
+
+  // Убираем задачу с прежнего места
+  const [movedTask] = tasks.splice(sourceIndex, 1);
+
+  // После удаления индекс целевой задачи мог измениться
+  const targetIndex = tasks.findIndex((task) => task.id === targetId);
+  const newIndex = targetIndex + (insertAfter ? 1 : 0);
+
+  tasks.splice(newIndex, 0, movedTask);
+
+  saveChanges('Порядок задач сохранён.');
+  renderTasks();
+}
+
+function addDragEvents(item, task) {
+  item.draggable = canReorderTasks();
+
+  item.addEventListener('dragstart', (event) => {
+    if (!canReorderTasks()) {
+      event.preventDefault();
+      return;
+    }
+
+    draggedTaskId = task.id;
+
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', task.id);
+
+    item.classList.add('task--dragging');
+  });
+
+  item.addEventListener('dragover', (event) => {
+    if (
+      !canReorderTasks() ||
+      draggedTaskId === null ||
+      draggedTaskId === task.id
+    ) {
+      return;
+    }
+
+    // Без preventDefault браузер не разрешит сбросить задачу.
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+
+    const bounds = item.getBoundingClientRect();
+    const insertAfter = event.clientY > bounds.top + bounds.height / 2;
+
+    item.classList.toggle('task--drop-before', !insertAfter);
+    item.classList.toggle('task--drop-after', insertAfter);
+  });
+
+  item.addEventListener('dragleave', (event) => {
+    if (!item.contains(event.relatedTarget)) {
+      item.classList.remove('task--drop-before', 'task--drop-after');
+    }
+  });
+
+  item.addEventListener('drop', (event) => {
+    event.preventDefault();
+
+    item.classList.remove('task--drop-before', 'task--drop-after');
+
+    if (!canReorderTasks() || draggedTaskId === null) return;
+
+    const bounds = item.getBoundingClientRect();
+    const insertAfter = event.clientY > bounds.top + bounds.height / 2;
+    const sourceId = draggedTaskId;
+
+    draggedTaskId = null;
+    moveTask(sourceId, task.id, insertAfter);
+  });
+
+  item.addEventListener('dragend', () => {
+    draggedTaskId = null;
+
+    for (const taskElement of taskList.children) {
+      taskElement.classList.remove(
+        'task--dragging',
+        'task--drop-before',
+        'task--drop-after'
+      );
+    }
+  });
+}
+
 // Отображение задач
 function renderTasks() {
   taskList.replaceChildren();
+
+  reorderHint.textContent = canReorderTasks()
+  ? 'Перетащите задачу выше или ниже, чтобы изменить порядок.'
+  : 'Для перемещения выберите ручной порядок и сбросьте поиск и фильтры.';
 
   const visibleTasks = getVisibleTasks();
 
@@ -275,6 +385,7 @@ function renderTasks() {
     const item = document.createElement('li');
     item.className = 'task';
     item.classList.toggle('task--completed', task.completed);
+    addDragEvents(item, task);
 
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
