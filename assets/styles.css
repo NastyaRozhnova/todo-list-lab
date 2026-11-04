@@ -244,3 +244,37 @@ button:hover {
     user-select: none;
   }
 }
+
+.task-form,
+.filters {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.task-form > *,
+.filters > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="date"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  min-height: 1.5em;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .task-form input,
+  .filters input,
+  .filters select {
+    font-size: 16px;
+  }
+}

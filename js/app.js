@@ -660,7 +660,12 @@ form.addEventListener('submit', (event) => {
     successMessage = 'Изменения сохранены.';
   } else {
     const task = {
-      id: crypto.randomUUID(),
+      id: typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : Array.from(
+            crypto.getRandomValues(new Uint32Array(4)),
+            (number) => number.toString(16).padStart(8, '0')
+          ).join(''),
       title,
       date: dateInput.value,
       completed: false
