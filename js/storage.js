@@ -52,3 +52,71 @@ export function saveTasks(tasks) {
     return false;
   }
 }
+
+const FILTERS_KEY = 'todo-list-lab:filters';
+
+export function loadFilters() {
+  const defaults = {
+    query: '',
+    status: 'all',
+    date: '',
+    sort: 'manual'
+  };
+
+  try {
+    const raw = localStorage.getItem(FILTERS_KEY);
+
+    if (raw === null) {
+      return { filters: defaults, error: '' };
+    }
+
+    const saved = JSON.parse(raw);
+
+    if (
+      !saved ||
+      typeof saved.query !== 'string' ||
+      !['all', 'active', 'completed'].includes(saved.status) ||
+      typeof saved.date !== 'string' ||
+      !['manual', 'asc', 'desc'].includes(saved.sort)
+    ) {
+      throw new Error('Некорректные настройки');
+    }
+
+    if (saved.date !== '') {
+      const date = new Date(`${saved.date}T00:00:00Z`);
+
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(saved.date) ||
+        saved.date.startsWith('0000') ||
+        !Number.isFinite(date.getTime()) ||
+        date.toISOString().slice(0, 10) !== saved.date
+      ) {
+        throw new Error('Некорректная дата');
+      }
+    }
+
+    return {
+      filters: {
+        query: saved.query,
+        status: saved.status,
+        date: saved.date,
+        sort: saved.sort
+      },
+      error: ''
+    };
+  } catch {
+    return {
+      filters: defaults,
+      error: 'Не удалось загрузить фильтры. Использованы стандартные настройки.'
+    };
+  }
+}
+
+export function saveFilters(filters) {
+  try {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+    return true;
+  } catch {
+    return false;
+  }
+}

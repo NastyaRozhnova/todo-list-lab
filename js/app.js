@@ -1,4 +1,9 @@
-import { loadTasks, saveTasks } from './storage.js';
+import {
+  loadTasks,
+  saveTasks,
+  loadFilters,
+  saveFilters
+} from './storage.js';
 
 // Подключение стилей
 const stylesheet = document.createElement('link');
@@ -238,21 +243,25 @@ function getVisibleTasks() {
   return visibleTasks;
 }
 
-searchInput.addEventListener('input', () => {
-  renderTasks();
-});
+function applyFilters() {
+  const saved = saveFilters({
+    query: searchInput.value,
+    status: statusSelect.value,
+    date: dateFilterInput.value,
+    sort: sortSelect.value
+  });
 
-statusSelect.addEventListener('change', () => {
   renderTasks();
-});
 
-dateFilterInput.addEventListener('change', () => {
-  renderTasks();
-});
+  message.textContent = saved
+    ? 'Фильтры применены и сохранены.'
+    : 'Фильтры применены, но сохранить их не удалось.';
+}
 
-sortSelect.addEventListener('change', () => {
-  renderTasks();
-});
+searchInput.addEventListener('input', applyFilters);
+statusSelect.addEventListener('change', applyFilters);
+dateFilterInput.addEventListener('change', applyFilters);
+sortSelect.addEventListener('change', applyFilters);
 
 resetFiltersButton.addEventListener('click', () => {
   searchInput.value = '';
@@ -260,7 +269,7 @@ resetFiltersButton.addEventListener('click', () => {
   dateFilterInput.value = '';
   sortSelect.value = 'manual';
 
-  renderTasks();
+  applyFilters();
   searchInput.focus();
 });
 
@@ -680,5 +689,19 @@ form.addEventListener('submit', (event) => {
   resetForm();
   titleInput.focus();
 });
+
+const savedFilters = loadFilters();
+
+searchInput.value = savedFilters.filters.query;
+statusSelect.value = savedFilters.filters.status;
+dateFilterInput.value = savedFilters.filters.date;
+sortSelect.value = savedFilters.filters.sort;
+
+if (savedFilters.error) {
+  message.textContent = [
+    message.textContent,
+    savedFilters.error
+  ].filter(Boolean).join(' ');
+}
 
 renderTasks();
