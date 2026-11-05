@@ -19,17 +19,30 @@ body {
   font-family: Arial, sans-serif;
   color: var(--text);
   background-color: var(--blue);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
   background-image:
     radial-gradient(
-      ellipse at top left,
-      var(--cream) 0 28%,
-      transparent 28.2%
+      circle at 0% 10%,
+      var(--cream) 0,
+      var(--cream) 34vmin,
+      transparent calc(34vmin + 1px)
     ),
     radial-gradient(
-      ellipse at bottom right,
-      var(--cream) 0 30%,
-      transparent 30.2%
+      circle at 100% 90%,
+      var(--cream) 0,
+      var(--cream) 40vmin,
+      transparent calc(40vmin + 1px)
     );
+
+  background-repeat: no-repeat;
 }
 
 .app {
@@ -39,6 +52,8 @@ body {
   background-color: var(--paper);
   border-radius: 36px;
   box-shadow: 10px 14px 0 rgb(63 78 105 / 10%);
+  position: relative;
+  z-index: 1;
 }
 
 h1 {
