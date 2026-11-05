@@ -8,7 +8,7 @@ import {
 // Подключение стилей
 const stylesheet = document.createElement('link');
 stylesheet.rel = 'stylesheet';
-stylesheet.href = new URL('../assets/styles.css', import.meta.url).href;
+stylesheet.href = new URL('../assets/styles.css?v=2', import.meta.url).href;
 
 document.head.append(stylesheet);
 
