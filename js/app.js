@@ -76,6 +76,8 @@ message.setAttribute('role', 'status');
 
 const taskList = document.createElement('ul');
 taskList.className = 'task-list';
+taskList.tabIndex = -1;
+taskList.setAttribute('aria-label', 'Список задач');
 
 // Поиск и фильтр статуса
 const filters = document.createElement('section');
@@ -275,30 +277,43 @@ resetFiltersButton.addEventListener('click', () => {
 
 // Перемещение задач
 function canReorderTasks() {
-  return (
-    sortSelect.value === 'manual' &&
-    statusSelect.value === 'all' &&
-    searchInput.value.trim() === '' &&
-    dateFilterInput.value === ''
-  );
+  return sortSelect.value === 'manual';
 }
 
 function moveTask(sourceId, targetId, insertAfter) {
-  if (sourceId === targetId) return;
+  if (!canReorderTasks() || sourceId === targetId) return;
 
-  const sourceIndex = tasks.findIndex((task) => task.id === sourceId);
-  const targetExists = tasks.some((task) => task.id === targetId);
+  const visibleTasks = getVisibleTasks();
+  const visibleIds = new Set(
+    visibleTasks.map((task) => task.id)
+  );
 
-  if (sourceIndex === -1 || !targetExists) return;
+  const sourceIndex = visibleTasks.findIndex(
+    (task) => task.id === sourceId
+  );
 
-  // Убираем задачу с прежнего места
-  const [movedTask] = tasks.splice(sourceIndex, 1);
+  if (sourceIndex === -1 || !visibleIds.has(targetId)) {
+    return;
+  }
 
-  // После удаления индекс целевой задачи мог измениться
-  const targetIndex = tasks.findIndex((task) => task.id === targetId);
+  // Меняем порядок только внутри видимой части списка
+  const [movedTask] = visibleTasks.splice(sourceIndex, 1);
+
+  const targetIndex = visibleTasks.findIndex(
+    (task) => task.id === targetId
+  );
+
   const newIndex = targetIndex + (insertAfter ? 1 : 0);
+  visibleTasks.splice(newIndex, 0, movedTask);
 
-  tasks.splice(newIndex, 0, movedTask);
+  // Возвращаем видимые задачи на их места в общем массиве, скрытые задачи остаются на прежних позициях
+  let visibleIndex = 0;
+
+  tasks = tasks.map((task) => {
+    if (!visibleIds.has(task.id)) return task;
+
+    return visibleTasks[visibleIndex++];
+  });
 
   saveChanges('Порядок задач сохранён.');
   renderTasks();
@@ -529,8 +544,8 @@ function renderTasks() {
   taskList.replaceChildren();
 
   reorderHint.textContent = canReorderTasks()
-  ? 'Перетащите задачу мышью. На телефоне: удерживайте карточку, затем тяните.'
-  : 'Для перемещения выберите ручной порядок и сбросьте поиск и фильтры.';
+  ? 'Перетащите задачу мышью. На телефоне: удерживайте карточку, затем тяните. При фильтрах меняется порядок только видимых задач.'
+  : 'Для перемещения задач выберите «Ручной порядок».';
 
   const visibleTasks = getVisibleTasks();
 
@@ -573,21 +588,33 @@ function renderTasks() {
       task.completed = checkbox.checked;
 
       if (task.completed) {
-        // Убираем задачу с текущего места
         tasks = tasks.filter((item) => item.id !== task.id);
-
-        // Добавляем эту же задачу в конец
         tasks.push(task);
       }
 
       saveChanges(
         task.completed
-          ? 'Задача выполнена и перемещена в конец.'
+          ? 'Задача выполнена.'
           : 'Задача возвращена в работу.'
       );
 
       renderTasks();
-      statusSelect.focus();
+
+      // После перерисовки находим новую карточку этой задачи
+      const updatedItem = Array.from(taskList.children).find(
+        (row) => row.dataset.taskId === task.id
+      );
+
+      const updatedCheckbox = updatedItem?.querySelector(
+        'input[type="checkbox"]'
+      );
+
+      if (updatedCheckbox) {
+        updatedCheckbox.focus({ preventScroll: true });
+      } else {
+        // Если задача скрылась из-за фильтра, фокусируем сам список
+        taskList.focus({ preventScroll: true });
+      }
     });
 
     // Редактирование задачи

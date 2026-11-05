@@ -1,5 +1,26 @@
 const STORAGE_KEY = 'todo-list-lab:tasks';
 
+function isValidDate(value) {
+  if (typeof value !== 'string') return false;
+
+  // Пустая дата допустима: срок необязателен
+  if (value === '') return true;
+
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+    value.startsWith('0000')
+  ) {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00Z`);
+
+  return (
+    Number.isFinite(date.getTime()) &&
+    date.toISOString().slice(0, 10) === value
+  );
+}
+
 export function loadTasks() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -25,7 +46,7 @@ export function loadTasks() {
         typeof task.title !== 'string' ||
         !task.title.trim() ||
         task.title.length > 200 ||
-        typeof task.date !== 'string' ||
+        !isValidDate(task.date) ||
         typeof task.completed !== 'boolean'
       ) {
         throw new Error('Некорректная задача');
@@ -76,23 +97,10 @@ export function loadFilters() {
       !saved ||
       typeof saved.query !== 'string' ||
       !['all', 'active', 'completed'].includes(saved.status) ||
-      typeof saved.date !== 'string' ||
+      !isValidDate(saved.date) ||
       !['manual', 'asc', 'desc'].includes(saved.sort)
     ) {
       throw new Error('Некорректные настройки');
-    }
-
-    if (saved.date !== '') {
-      const date = new Date(`${saved.date}T00:00:00Z`);
-
-      if (
-        !/^\d{4}-\d{2}-\d{2}$/.test(saved.date) ||
-        saved.date.startsWith('0000') ||
-        !Number.isFinite(date.getTime()) ||
-        date.toISOString().slice(0, 10) !== saved.date
-      ) {
-        throw new Error('Некорректная дата');
-      }
     }
 
     return {
